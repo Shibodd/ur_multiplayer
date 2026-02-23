@@ -1,6 +1,8 @@
 #pragma once
 
-module ur::multiplayer
+#include <Ice/Identity.ice>
+
+module ur::multiplayer::idl
 {
     struct Timestamp
     {

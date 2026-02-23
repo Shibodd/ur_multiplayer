@@ -3,7 +3,7 @@
 #include "Vector2f.ice"
 #include "Timestamp.ice"
 
-module ur::multiplayer
+module ur::multiplayer::idl
 {
     struct VehicleState
     {

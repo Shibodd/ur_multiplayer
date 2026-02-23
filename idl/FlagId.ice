@@ -1,6 +1,6 @@
 #pragma once
 
-module ur::multiplayer
+module ur::multiplayer::idl
 {
     struct FlagId
     {

@@ -5,8 +5,9 @@
 #include "ParticipantId.ice"
 #include "FlagId.ice"
 #include "VehicleState.ice"
+#include "Server.ice"
 
-module ur::multiplayer
+module ur::multiplayer::idl
 {
     struct Opponent
     {
@@ -15,12 +16,6 @@ module ur::multiplayer
     }
     sequence<Opponent> Opponents;
 
-    struct ServerToClientHRUpdate
-    {
-        Timestamp serverTxStamp;
-        Opponents opponents;
-    }
-
     struct ScheduledFlag
     {
         FlagId id;
@@ -28,9 +23,19 @@ module ur::multiplayer
     }
     sequence<ScheduledFlag> ScheduledFlags;
 
+    struct Hello
+    {
+        Server* server;
+        string message;
+        Duration updateIntervalMs;
+        Duration raceControlIntervalMs;
+        ParticipantId participantId;
+    }
+
     interface Participant
     {
-        void hrUpdate(ServerToClientHRUpdate update);
+        void hello(Hello hello);
+        void hrUpdate(Timestamp serverTxStamp, Opponents opponents);
         void updateFlags(ScheduledFlags flags);
     }
 }

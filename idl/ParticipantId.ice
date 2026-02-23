@@ -1,9 +1,9 @@
 #pragma once
 
-module ur::multiplayer
+module ur::multiplayer::idl
 {
     struct ParticipantId
     {
-        byte value;
+        short value;
     }
 }

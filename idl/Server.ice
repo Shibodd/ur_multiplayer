@@ -1,24 +1,15 @@
 #pragma once
 
-#include "ServerMetadata.ice"
-#include "VehicleState.ice"
 #include "Duration.ice"
-#include "ParticipantId.ice"
+#include "VehicleState.ice"
 #include "FlagId.ice"
+#include "ParticipantId.ice"
 
-module ur::multiplayer
+module ur::multiplayer::idl
 {
-    struct ClientToServerHRUpdate
-    {
-        VehicleState state;
-        Duration clientTxStamp;
-        Duration clientMinRxDelay;
-    }
-
     interface Server
     {
-        ServerMetadata getServerMetadata();
-        void hrUpdate(ClientToServerHRUpdate update);
+        void hrUpdate(Duration clientTxStamp, Duration clientMinRxDelay, VehicleState state);
         void requestCircuitFlag(FlagId flag);
         void requestVehicleFlag(ParticipantId participantId, FlagId flag);
     }
