@@ -7,6 +7,7 @@
 #include <multiplayer/server.hpp>
 
 #include <Ice/ProxyFunctions.h>
+#include <tuple>
 #include <utility>
 
 namespace ur {
@@ -23,9 +24,8 @@ void ServerServant::requestVehicleFlag(idl::ParticipantId participantId, idl::Fl
 }
 
 void LobbyServant::join(std::string version, std::optional<idl::ParticipantPrx> participant, const Ice::Current& current) {
-    std::cout << "join" << std::endl;
-
     if (not participant.has_value()) {
+        std::cout << "Empty join request discarded" << std::endl;
         return;
     }
 
@@ -38,31 +38,38 @@ void LobbyServant::join(std::string version, std::optional<idl::ParticipantPrx> 
     {
         auto it = m_participants.find(participant_identity);
         if (it != m_participants.end()) {
+            std::cout << "Duplicate join request by " << participant_identity << std::endl;
+
             hello.message = "Already connected";
             hello.participantId = idl::ParticipantId { static_cast<short>(it->second.id) };
             hello.server = it->second.server;
-            participant->ice_datagram()->hello(hello);
+            participant->hello(hello);
             return;
         }
     }
 
     if (version != "") {
+        std::cout << "Join request with wrong version by " << participant_identity << std::endl;
+
         hello.message = "Incompatible version!";
-        participant->ice_datagram()->hello(hello);
+        participant->hello(hello);
         return;
     }
 
-    auto server = Ice::uncheckedCast<idl::ServerPrx>(current.adapter->addWithUUID(std::make_shared<ServerServant>()));
+    auto server = Ice::uncheckedCast<idl::ServerPrx>(current.adapter->addWithUUID(std::make_shared<ServerServant>())).ice_datagram();
+    
     auto [it,_] = m_participants.emplace(
         std::piecewise_construct,
-        std::make_tuple(participant_identity),
-        std::make_tuple(*participant, server, m_next_id++)
+        std::forward_as_tuple(participant_identity),
+        std::forward_as_tuple(*participant, server, m_next_id++)
     );
 
     hello.message = "Connected";
     hello.participantId = idl::ParticipantId { static_cast<short>(it->second.id) };
     hello.server = server;
-    participant->ice_datagram()->hello(hello);
+    participant->hello(hello);
+
+    std::cout << "Completed join request by " << participant_identity << std::endl;
 }
 
 } // namespace multiplayer

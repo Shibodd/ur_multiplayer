@@ -14,6 +14,7 @@ void Participant::updateFlags(idl::ScheduledFlags flags, const Ice::Current& cur
 
 void Participant::hello(idl::Hello hello, const Ice::Current& current) {
     std::cout << hello.message << std::endl;
+    m_server = hello.server;
 }
 
 } // namespace multiplayer
