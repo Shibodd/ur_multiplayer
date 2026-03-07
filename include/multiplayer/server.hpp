@@ -1,11 +1,16 @@
 #pragma once
 
-#include <Ice/Identity.h>
+
+#include <chrono>
 #include <iostream>
+
+#include <Ice/Identity.h>
 
 #include <Participant.h>
 #include <Server.h>
 #include <Lobby.h>
+
+#include <multiplayer/participant_id.hpp>
 
 namespace ur {
 namespace multiplayer {
@@ -13,30 +18,16 @@ namespace multiplayer {
 class ServerServant : public idl::Server
 {
 public:
-    void hrUpdate(idl::Duration clientTxStamp, idl::Duration clientMinRxDelay, idl::VehicleState state, const Ice::Current& current) override;
-    void requestCircuitFlag(idl::FlagId flag, const Ice::Current& current) override;
-    void requestVehicleFlag(idl::ParticipantId participantId, idl::FlagId flag, const Ice::Current& current) override;
-};
+    ServerServant(idl::ParticipantPrx participant, participant_id_t id);
 
-struct LobbyServant : public idl::Lobby {
-    void join(std::string version, std::optional<idl::ParticipantPrx> participant, const Ice::Current& current) override;
+    void hrUpdate(idl::Duration clientTxStamp, idl::Duration clientMinRxDelay, idl::VehicleState state, const Ice::Current& current) override;
 
 private:
-    struct {
-        idl::Duration update_interval_ms;
-        idl::Duration race_control_interval_ms;
-    } m_hello_data;
+    using last_update_clock_t = std::chrono::steady_clock;
 
-    struct OneParticipant {
-        idl::ParticipantPrx participant;
-        idl::ServerPrx server;
-        unsigned short id;
-
-        OneParticipant(const idl::ParticipantPrx& participant, const idl::ServerPrx& server, unsigned short id)
-            : participant(participant), server(server), id(id) {}
-    };
-    std::unordered_map<std::string, OneParticipant> m_participants;
-    unsigned short m_next_id = 0;
+    idl::ParticipantPrx m_proxy;
+    participant_id_t m_id;
+    last_update_clock_t::time_point m_last_update;
 };
 
 } // namespace multiplayer

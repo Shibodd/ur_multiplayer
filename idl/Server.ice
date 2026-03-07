@@ -10,7 +10,5 @@ module ur::multiplayer::idl
     interface Server
     {
         void hrUpdate(Duration clientTxStamp, Duration clientMinRxDelay, VehicleState state);
-        void requestCircuitFlag(FlagId flag);
-        void requestVehicleFlag(ParticipantId participantId, FlagId flag);
     }
 }

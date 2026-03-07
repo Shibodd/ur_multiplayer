@@ -1,12 +1,11 @@
 #include "FlagId.h"
-#include "Lobby.h"
-#include "Participant.h"
-#include <Ice/Ice.h>
-#include <Ice/ProxyFunctions.h>
-#include <chrono>
-#include <future>
 #include <iostream>
 #include <thread>
+
+#include <Ice/Ice.h>
+
+#include <Lobby.h>
+#include <RaceControl.h>
 
 #include <multiplayer/participant.hpp>
 
@@ -25,12 +24,17 @@ int main(int argc, char* argv[]) {
         communicator->stringToProxy("lobby:udp -h localhost -p 3478")->ice_datagram()
     );
 
+    auto race_control = Ice::uncheckedCast<ur::multiplayer::idl::RaceControlPrx>(
+        communicator->stringToProxy("racecontrol:udp -h localhost -p 3478")->ice_datagram()
+    );
+
+
     do {
         lobby->join("", participant_proxy);
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    } while (not participant->server().has_value());
+    } while (not participant->has_joined());
 
-    participant->server()->requestCircuitFlag(ur::multiplayer::idl::FlagId{ 1 });
+    race_control.requestCircuitFlag(ur::multiplayer::idl::FlagId { 5 });
 
     /*
     Ice::CtrlCHandler ctrlCHandler;

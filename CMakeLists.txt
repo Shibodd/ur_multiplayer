@@ -9,7 +9,7 @@ find_package (Ice REQUIRED CONFIG)
 
 include (idl/sources.cmake)
 
-add_library (server STATIC src/server.cpp ${IDL_MESSAGE_SOURCES})
+add_library (server STATIC src/server.cpp src/lobby.cpp src/race_control.cpp ${IDL_MESSAGE_SOURCES})
 slice2cpp_generate (server)
 target_link_libraries (server Ice::Ice)
 target_include_directories (server PUBLIC include ${CMAKE_BINARY_DIR}/generated/server)

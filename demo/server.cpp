@@ -2,7 +2,8 @@
 
 #include <Ice/Ice.h>
 
-#include <multiplayer/server.hpp>
+#include <multiplayer/lobby.hpp>
+#include <multiplayer/race_control.hpp>
 
 int main(int argc, char* argv[])
 {
@@ -19,8 +20,9 @@ int main(int argc, char* argv[])
     // Create an object adapter that listens for incoming requests and dispatches them to servants.
     auto adapter = communicator->createObjectAdapterWithEndpoints("ServerAdapter", "udp -h localhost -p 3478");
 
-    // Register the Chatbot servant with the adapter.
+    // Register the servants with the adapter.
     adapter->add(std::make_shared<ur::multiplayer::LobbyServant>(), Ice::Identity{"lobby"});
+    adapter->add(std::make_shared<ur::multiplayer::RaceControlServant>(), Ice::Identity{"racecontrol"});
 
     // Start dispatching requests.
     adapter->activate();

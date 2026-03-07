@@ -8,4 +8,5 @@ set (IDL_MESSAGE_SOURCES
     idl/Timestamp.ice
     idl/Vector2f.ice
     idl/VehicleState.ice
+    idl/RaceControl.ice
 )
