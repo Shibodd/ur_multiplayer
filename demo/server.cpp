@@ -100,8 +100,6 @@ int main(int argc, char* argv[])
                         if (this_state_it != world_state.end()) {
                             this_state = *this_state_it;
                             world_state.erase(this_state_it);
-
-                            std::cout << this_state_it->vehicleState.velocity.x << std::endl;
                         }
                     }
 

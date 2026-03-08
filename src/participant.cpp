@@ -36,8 +36,6 @@ void Participant::hrUpdate(
     for (auto& opponent : opponents) {
         opponent.vehicleState.stamp.nanoseconds -= clock_offset.value_or(std::chrono::nanoseconds(0)).count();
     }
-
-    std::cout << clock_offset.value_or(std::chrono::nanoseconds(0)).count() << std::endl;
 }
 
 void Participant::hello(idl::Hello hello, const Ice::Current& current) {

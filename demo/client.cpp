@@ -47,9 +47,22 @@ int main(int argc, char* argv[]) {
     } while (not participant->has_joined());
 
     auto runner = std::thread([&stop_token, &participant]() {
+        std::chrono::milliseconds interval { 50 };
+
+        auto next = std::chrono::steady_clock::now();
+
         while (not stop_token) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            std::this_thread::sleep_until(next);
+            auto t = std::chrono::steady_clock::now();
+            next = t + interval;
+
             ur::multiplayer::idl::VehicleState vs;
+
+            auto offset = participant->clock_offset();
+
+            if (offset) {
+                std::cout << offset->count() << std::endl;
+            }
             
             auto proxy = participant->server_proxy();
             auto tx_stamp = std::chrono::duration_cast<std::chrono::nanoseconds>(

@@ -24,6 +24,10 @@ struct Participant : public idl::Participant {
     
     bool has_joined() const { return m_data.has_value(); }
     auto server_proxy() const { return m_data->proxy; };
+    auto clock_offset() {
+        std::scoped_lock lock(m_offset_calc_mtx);
+        return m_offset_calculator.get_tx_delay(clock_sync::ClockOffsetCalculator::Clock::now());
+    }
 
 private:
     std::mutex m_offset_calc_mtx;
