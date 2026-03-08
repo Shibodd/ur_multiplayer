@@ -10,7 +10,7 @@
 namespace clock_sync {
 
 struct ClockOffsetCalculator {
-  using Clock = std::chrono::system_clock;
+  using Clock = std::chrono::steady_clock;
   using Timepoint = Clock::time_point;
   using Duration = Timepoint::duration;
   using Filter = utils::WindowMinimum<Timepoint, Duration>;

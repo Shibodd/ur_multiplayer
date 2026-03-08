@@ -20,7 +20,7 @@ void Participant::hrUpdate(
         idl::FlagId circuitFlag,
         idl::ScheduledFlag scheduledCircuitFlag, 
         const Ice::Current& current) {
-    auto rx_stamp = clock_sync::ClockOffsetCalculator::Clock::now();
+    auto rx_stamp = std::chrono::steady_clock::now();
     auto tx_stamp = clock_sync::ClockOffsetCalculator::Timepoint { std::chrono::nanoseconds { serverTxStamp.nanoseconds } };
 
     std::optional<clock_sync::ClockOffsetCalculator::Duration> clock_offset;

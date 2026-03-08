@@ -105,7 +105,7 @@ int main(int argc, char* argv[])
 
                     ptr->participant_proxy().hrUpdate(
                         idl::Timestamp { std::chrono::duration_cast<std::chrono::nanoseconds>(
-                            clock_sync::ClockOffsetCalculator::Clock::now().time_since_epoch()
+                            std::chrono::steady_clock::now().time_since_epoch()
                         ).count() },
                         rx_delay,
                         world_state,

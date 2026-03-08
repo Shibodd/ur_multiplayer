@@ -26,7 +26,7 @@ struct Participant : public idl::Participant {
     auto server_proxy() const { return m_data->proxy; };
     auto clock_offset() {
         std::scoped_lock lock(m_offset_calc_mtx);
-        return m_offset_calculator.get_tx_delay(clock_sync::ClockOffsetCalculator::Clock::now());
+        return m_offset_calculator.get_tx_delay(std::chrono::steady_clock::now());
     }
 
     idl::Opponents opponents() {

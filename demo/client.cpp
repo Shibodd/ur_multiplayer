@@ -133,7 +133,7 @@ int main(int argc, char* argv[]) {
 
             auto proxy = participant->server_proxy();
             auto tx_stamp = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                clock_sync::ClockOffsetCalculator::Clock::now().time_since_epoch()
+                std::chrono::steady_clock::now().time_since_epoch()
             );
             proxy->hrUpdate({ tx_stamp.count() }, vehicle_state);
         }
@@ -158,7 +158,7 @@ int main(int argc, char* argv[]) {
 
         {
             std::scoped_lock lock(vs_mtx);
-            vs.stamp.nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+            vs.stamp.nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
             vs.throttle = throttle;
             vs.steering = steer;
             motion_model(vs, dt);
@@ -170,10 +170,10 @@ int main(int argc, char* argv[]) {
         drawVehicle(window, vs, sf::Color::White);
 
         auto opponents = participant->opponents();
-        auto t = std::chrono::system_clock::now();
+        auto t = std::chrono::steady_clock::now();
 
         for (auto &op : opponents) {
-            auto other_t = std::chrono::system_clock::time_point{ std::chrono::nanoseconds { op.vehicleState.stamp.nanoseconds } };
+            auto other_t = std::chrono::steady_clock::time_point{ std::chrono::nanoseconds { op.vehicleState.stamp.nanoseconds } };
 
             auto dt = std::chrono::duration<float>(
                 t - other_t

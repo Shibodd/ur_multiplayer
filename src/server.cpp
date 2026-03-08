@@ -28,7 +28,7 @@ idl::VehicleState ServerServant::get_state() {
 }
 
 void ServerServant::hrUpdate(idl::Duration clientTxStamp, idl::VehicleState state, const Ice::Current& current) {
-    auto rx_stamp = clock_sync::ClockOffsetCalculator::Clock::now();
+    auto rx_stamp = std::chrono::steady_clock::now();
     auto tx_stamp = clock_sync::ClockOffsetCalculator::Timepoint { std::chrono::nanoseconds{ clientTxStamp.value } };
 
     m_last_update = last_update_clock_t::now();
