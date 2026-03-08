@@ -12,6 +12,8 @@ module ur::multiplayer::idl
         Vector2f position;
         Vector2f velocity;
         float yaw;
-        float yawRate;
+
+        float steering;
+        float throttle;
     }
 }

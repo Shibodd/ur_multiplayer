@@ -27,9 +27,7 @@ void drawVehicle(sf::RenderWindow &window, ur::multiplayer::idl::VehicleState st
 
 void motion_model(
     ur::multiplayer::idl::VehicleState &state,
-    float dt,
-    float throttle,   // -1..1
-    float steer       // radians, positive = left
+    float dt
 ) {
     const float L = 40.0f;
     const float max_speed = 500.f;
@@ -40,7 +38,7 @@ void motion_model(
     const float friction = 200.0f;
 
     // Update forward speed
-    float acceleration = std::clamp(throttle * accel_gain, -max_decel, max_accel);
+    float acceleration = std::clamp(state.throttle * accel_gain, -max_decel, max_accel);
     acceleration -= std::clamp(state.velocity.x / dt, -friction, friction);
 
     state.velocity.x += acceleration * dt;
@@ -50,7 +48,7 @@ void motion_model(
     state.velocity.y = 0.f;
 
     // Update yaw
-    state.yaw += (state.velocity.x / L) * std::tan(steer) * dt;
+    state.yaw += (state.velocity.x / L) * std::tan(state.steering) * dt;
     // Optional clamp for yaw [-pi, pi]
     if (state.yaw > M_PI) state.yaw -= 2.f * M_PI;
     else if (state.yaw < -M_PI) state.yaw += 2.f * M_PI;
@@ -58,9 +56,6 @@ void motion_model(
     // Update position
     state.position.x += std::cos(state.yaw) * state.velocity.x * dt;
     state.position.y += std::sin(state.yaw) * state.velocity.x * dt;
-
-    // Compute yawRate for visualization if needed
-    state.yawRate = (state.velocity.x / L) * std::tan(steer);
 }
 
 int main(int argc, char* argv[]) {
@@ -113,7 +108,6 @@ int main(int argc, char* argv[]) {
     vs.velocity.x = 0.0f;
     vs.velocity.y = 0.0f;
     vs.yaw = 0.0f;
-    vs.yawRate = 0.0f;
 
     auto runner = std::thread([&]() {
         std::chrono::milliseconds interval { 50 };
@@ -157,7 +151,13 @@ int main(int argc, char* argv[]) {
 
         float throttle = sf::Keyboard::isKeyPressed(sf::Keyboard::Up) - sf::Keyboard::isKeyPressed(sf::Keyboard::Down);
         float steer = 0.3f * (sf::Keyboard::isKeyPressed(sf::Keyboard::Left) - sf::Keyboard::isKeyPressed(sf::Keyboard::Right));
-        motion_model(vs, dt, throttle, steer);
+
+        {
+            std::scoped_lock lock(vs_mtx);
+            vs.throttle = throttle;
+            vs.steering = steer;
+            motion_model(vs, dt);
+        }
 
         window.clear(sf::Color::Black);
 
@@ -174,7 +174,7 @@ int main(int argc, char* argv[]) {
                 t - other_t
             ).count();
 
-            motion_model(op.vehicleState, dt, 0.0f, 0.0f);
+            motion_model(op.vehicleState, dt);
             drawVehicle(window, op.vehicleState, sf::Color::Red);
         }
 
