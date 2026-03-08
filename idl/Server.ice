@@ -9,6 +9,6 @@ module ur::multiplayer::idl
 {
     interface Server
     {
-        void hrUpdate(Duration clientTxStamp, Duration clientMinRxDelay, VehicleState state);
+        void hrUpdate(Duration clientTxStamp, VehicleState state);
     }
 }

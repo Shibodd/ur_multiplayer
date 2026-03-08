@@ -21,21 +21,17 @@ module ur::multiplayer::idl
         FlagId id;
         Timestamp activationStamp;
     }
-    sequence<ScheduledFlag> ScheduledFlags;
 
     struct Hello
     {
         Server* server;
         string message;
-        Duration updateIntervalMs;
-        Duration raceControlIntervalMs;
         ParticipantId participantId;
     }
 
     interface Participant
     {
         void hello(Hello hello);
-        void hrUpdate(Timestamp serverTxStamp, Opponents opponents);
-        void updateFlags(ScheduledFlags flags);
+        void hrUpdate(Timestamp serverTxStamp, Duration serverMinRxDelay, Opponents opponents, FlagId vehicleFlag, FlagId circuitFlag, ScheduledFlag scheduledCircuitFlag);
     }
 }

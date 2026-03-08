@@ -1,77 +1,56 @@
 #pragma once
 
-
+#include "Participant.h"
 #include <atomic>
 #include <chrono>
 #include <iostream>
 
-#include <Ice/Identity.h>
+#include <clock_sync/clock_offset_calculator.hpp>
 
-#include <Participant.h>
-#include <Server.h>
-#include <Lobby.h>
-
+#include <multiplayer/lobby.hpp>
 #include <multiplayer/participant_id.hpp>
 
 namespace ur {
 namespace multiplayer {
 
-class ServerServant;
-
-struct ServerStartupToken {
-    ServerStartupToken(ServerServant& servant);
-    ~ServerStartupToken();
-
-    ServerStartupToken(const ServerStartupToken&) = delete;
-    ServerStartupToken& operator=(const ServerStartupToken&) = delete;
-    ServerStartupToken(ServerStartupToken&&) = delete;
-    ServerStartupToken& operator=(ServerStartupToken&&) = delete;
-    
-    void release();
-private:
-    bool m_should_cleanup = true;
-    ServerServant& m_servant;
-};
+class LobbyServant;
 
 class ServerServant : public idl::Server
 {
 public:
-    ServerServant(
-        idl::ParticipantPrx participant,
-        participant_id_t id,
-        std::chrono::milliseconds update_interval,
-        std::chrono::milliseconds timeout
-    );
-
-    ~ServerServant();
-
-    void hrUpdate(idl::Duration clientTxStamp, idl::Duration clientMinRxDelay, idl::VehicleState state, const Ice::Current& current) override;
-
-    void run();
-    ServerStartupToken set_cleanup_callback(std::function<void()> callback);
-    void start();
-
-    participant_id_t participant_id() const { return m_id; }
-
-    friend struct ServerStartupToken;
-private:
     using last_update_clock_t = std::chrono::steady_clock;
 
-    void cleanup();
+    ServerServant(
+        idl::ParticipantPrx participant,
+        participant_id_t id
+    );
+
+    ~ServerServant() { std::cout << "destroy " << m_id << std::endl; }
+
+    idl::VehicleState get_state();
+
+    void hrUpdate(idl::Duration clientTxStamp, idl::VehicleState state, const Ice::Current& current) override;
+    idl::ParticipantPrx participant_proxy() const { return m_proxy; }
+
+    last_update_clock_t::time_point last_update() const { return m_last_update; }
+    auto min_rx_delay() {
+        std::scoped_lock lock(m_rx_delay_window_mtx);
+        return m_rx_delay_window.minimum();
+    }
+
+    participant_id_t participant_id() const { return m_id; }
+private:
+    std::mutex m_state_mtx;
+    idl::VehicleState m_state;
+
+    std::mutex m_rx_delay_window_mtx;
+    clock_sync::utils::WindowMinimum<
+        clock_sync::ClockOffsetCalculator::Timepoint,
+        clock_sync::ClockOffsetCalculator::Duration> m_rx_delay_window;
 
     idl::ParticipantPrx m_proxy;
     participant_id_t m_id;
     last_update_clock_t::time_point m_last_update;
-
-    std::atomic_bool m_started = false;
-    std::chrono::milliseconds m_interval;
-    std::chrono::milliseconds m_timeout;
-    
-    std::atomic_bool m_cleaned_up = false;
-    std::function<void()> m_cleanup_callback;
-
-    std::thread m_thread;
-    std::atomic_bool m_stop_token = false;
 };
 
 } // namespace multiplayer

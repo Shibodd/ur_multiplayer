@@ -1,4 +1,3 @@
-#include "FlagId.h"
 #include <iostream>
 #include <thread>
 
@@ -6,6 +5,8 @@
 
 #include <Lobby.h>
 #include <RaceControl.h>
+
+#include <clock_sync/clock_offset_calculator.hpp>
 
 #include <multiplayer/participant.hpp>
 
@@ -28,28 +29,41 @@ int main(int argc, char* argv[]) {
         communicator->stringToProxy("racecontrol:udp -h localhost -p 3478")->ice_datagram()
     );
 
+    Ice::CtrlCHandler ctrlCHandler;
+    std::atomic_bool stop_token = false;
+
+    // Shut down the communicator when the user presses Ctrl+C.
+    ctrlCHandler.setCallback(
+        [communicator, &stop_token](int signal)
+        {
+            std::cout << "Caught signal " << signal << ", shutting down..." << std::endl;
+            communicator->shutdown();
+            stop_token = true;
+        });
 
     do {
         lobby->join("", participant_proxy);
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
     } while (not participant->has_joined());
 
-    race_control.requestCircuitFlag(ur::multiplayer::idl::FlagId { 5 });
+    auto runner = std::thread([&stop_token, &participant]() {
+        while (not stop_token) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            ur::multiplayer::idl::VehicleState vs;
+            
+            auto proxy = participant->server_proxy();
+            auto tx_stamp = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                clock_sync::ClockOffsetCalculator::Clock::now().time_since_epoch()
+            );
+            proxy->hrUpdate({ tx_stamp.count() }, vs);
+        }
+    });
 
-    /*
-    Ice::CtrlCHandler ctrlCHandler;
-
-    // Shut down the communicator when the user presses Ctrl+C.
-    ctrlCHandler.setCallback(
-        [communicator](int signal)
-        {
-            std::cout << "Caught signal " << signal << ", shutting down..." << std::endl;
-            communicator->shutdown();
-        });
+    // race_control.requestCircuitFlag(ur::multiplayer::idl::FlagId { 5 });
 
     // Wait until the communicator is shut down. Here, this occurs when the user presses Ctrl+C.
     communicator->waitForShutdown();
-    */
+    runner.join();
 
     // std::cout << hello.message << std::endl;
 }

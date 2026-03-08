@@ -9,14 +9,17 @@ find_package (Ice REQUIRED CONFIG)
 
 include (idl/sources.cmake)
 
+add_library (clock_sync STATIC src/clock_offset_calculator.cpp)
+target_include_directories (clock_sync PUBLIC include)
+
 add_library (server STATIC src/server.cpp src/lobby.cpp src/race_control.cpp ${IDL_MESSAGE_SOURCES})
 slice2cpp_generate (server)
-target_link_libraries (server Ice::Ice)
+target_link_libraries (server Ice::Ice clock_sync)
 target_include_directories (server PUBLIC include ${CMAKE_BINARY_DIR}/generated/server)
 
 add_library (participant STATIC src/participant.cpp ${IDL_MESSAGE_SOURCES})
 slice2cpp_generate (participant)
-target_link_libraries (participant Ice::Ice)
+target_link_libraries (participant Ice::Ice clock_sync)
 target_include_directories (participant PUBLIC include ${CMAKE_BINARY_DIR}/generated/participant)
 
 add_executable (demo_client demo/client.cpp)
