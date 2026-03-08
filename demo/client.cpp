@@ -64,10 +64,14 @@ void motion_model(
 }
 
 int main(int argc, char* argv[]) {
-    Ice::CommunicatorPtr communicator = Ice::initialize(argc, argv);
+    Ice::InitializationData initData;
+    initData.properties = Ice::createProperties(argc, argv);
+    initData.properties->setProperty("ClientAdapter.PublishedEndpoints", "udp -h 192.168.1.65 -p 3477");
+
+    Ice::CommunicatorPtr communicator = Ice::initialize(initData);
     Ice::CommunicatorHolder communicatorHolder{ communicator };
 
-    Ice::ObjectAdapterPtr adapter = communicator->createObjectAdapterWithEndpoints("ClientAdapter", "udp -h localhost -p 3477");
+    Ice::ObjectAdapterPtr adapter = communicator->createObjectAdapterWithEndpoints("ClientAdapter", "udp -h 192.168.1.65 -p 3477");
 
     auto participant = std::make_shared<ur::multiplayer::Participant>();
     auto participant_proxy = Ice::uncheckedCast<ur::multiplayer::idl::ParticipantPrx>(adapter->addWithUUID(participant)).ice_datagram();
@@ -75,11 +79,11 @@ int main(int argc, char* argv[]) {
     adapter->activate();
     
     auto lobby = Ice::uncheckedCast<ur::multiplayer::idl::LobbyPrx>(
-        communicator->stringToProxy("lobby:udp -h localhost -p 3478")->ice_datagram()
+        communicator->stringToProxy("lobby:udp -h 192.168.1.71 -p 3478")->ice_datagram()
     );
 
     auto race_control = Ice::uncheckedCast<ur::multiplayer::idl::RaceControlPrx>(
-        communicator->stringToProxy("racecontrol:udp -h localhost -p 3478")->ice_datagram()
+        communicator->stringToProxy("racecontrol:udp -h 192.168.1.71 -p 3478")->ice_datagram()
     );
 
     Ice::CtrlCHandler ctrlCHandler;
@@ -123,10 +127,6 @@ int main(int argc, char* argv[]) {
 
             auto offset = participant->clock_offset();
 
-            if (offset) {
-                std::cout << offset->count() << std::endl;
-            }
-
             ur::multiplayer::idl::VehicleState vehicle_state;
             {
                 std::scoped_lock lock(vs_mtx);
@@ -168,8 +168,14 @@ int main(int argc, char* argv[]) {
         auto t = std::chrono::system_clock::now();
 
         for (auto &op : opponents) {
-            auto dt = std::chrono::nanoseconds(op.vehicleState.stamp.nanoseconds) - t.time_since_epoch();
-            motion_model(op.vehicleState, std::chrono::duration<float>(dt).count(), 0.0f, 0.0f);
+            auto other_t = std::chrono::system_clock::time_point{ std::chrono::nanoseconds { op.vehicleState.stamp.nanoseconds } };
+
+            auto dt = std::chrono::duration<float>(
+                t - other_t
+            ).count();
+
+            motion_model(op.vehicleState, dt, 0.0f, 0.0f);
+            drawVehicle(window, op.vehicleState, sf::Color::Red);
         }
 
         window.display();
