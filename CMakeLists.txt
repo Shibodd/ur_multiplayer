@@ -23,7 +23,7 @@ target_link_libraries (participant Ice::Ice clock_sync)
 target_include_directories (participant PUBLIC include ${CMAKE_BINARY_DIR}/generated/participant)
 
 add_executable (demo_client demo/client.cpp)
-target_link_libraries (demo_client participant)
+target_link_libraries (demo_client participant sfml-graphics sfml-window sfml-system)
 
 add_executable (demo_server demo/server.cpp)
 target_link_libraries (demo_server server)

@@ -1,15 +1,67 @@
 #include "VehicleState.h"
+#include <chrono>
 #include <iostream>
 #include <thread>
+#include <cmath>
 
 #include <Ice/Ice.h>
+#include <SFML/Graphics.hpp>
 
 #include <Lobby.h>
 #include <RaceControl.h>
 
 #include <clock_sync/clock_offset_calculator.hpp>
 
+
 #include <multiplayer/participant.hpp>
+
+// Draw a vehicle rectangle
+void drawVehicle(sf::RenderWindow &window, ur::multiplayer::idl::VehicleState state, sf::Color color) {
+    sf::RectangleShape car(sf::Vector2f(50, 30));
+    car.setFillColor(color);
+    car.setRotation((180.0 / M_PI) * state.yaw);
+    car.setOrigin(car.getSize().x / 2.f, car.getSize().y / 2.f);
+    car.setPosition(state.position.x, state.position.y);
+    window.draw(car);
+}
+
+void motion_model(
+    ur::multiplayer::idl::VehicleState &state,
+    float dt,
+    float throttle,   // -1..1
+    float steer       // radians, positive = left
+) {
+    const float L = 40.0f;
+    const float max_speed = 500.f;
+
+    const float accel_gain = 2000.0f;
+    const float max_decel = 1000.f;
+    const float max_accel = 1000.f;
+    const float friction = 200.0f;
+
+    // Update forward speed
+    float acceleration = std::clamp(throttle * accel_gain, -max_decel, max_accel);
+    acceleration -= std::clamp(state.velocity.x / dt, -friction, friction);
+
+    state.velocity.x += acceleration * dt;
+    state.velocity.x = state.velocity.x;
+
+    // Lateral velocity = 0 in simple kinematic bicycle
+    state.velocity.y = 0.f;
+
+    // Update yaw
+    state.yaw += (state.velocity.x / L) * std::tan(steer) * dt;
+    // Optional clamp for yaw [-pi, pi]
+    if (state.yaw > M_PI) state.yaw -= 2.f * M_PI;
+    else if (state.yaw < -M_PI) state.yaw += 2.f * M_PI;
+
+    // Update position
+    state.position.x += std::cos(state.yaw) * state.velocity.x * dt;
+    state.position.y += std::sin(state.yaw) * state.velocity.x * dt;
+
+    // Compute yawRate for visualization if needed
+    state.yawRate = (state.velocity.x / L) * std::tan(steer);
+}
 
 int main(int argc, char* argv[]) {
     Ice::CommunicatorPtr communicator = Ice::initialize(argc, argv);
@@ -47,8 +99,17 @@ int main(int argc, char* argv[]) {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
     } while (not participant->has_joined());
 
+    sf::RenderWindow window(sf::VideoMode(800, 600), "Mini Racing Demo");
+    window.setFramerateLimit(60);
+
     std::mutex vs_mtx;
     ur::multiplayer::idl::VehicleState vs;
+    vs.position.x = 0.0f;
+    vs.position.y = 0.0f;
+    vs.velocity.x = 0.0f;
+    vs.velocity.y = 0.0f;
+    vs.yaw = 0.0f;
+    vs.yawRate = 0.0f;
 
     auto runner = std::thread([&]() {
         std::chrono::milliseconds interval { 50 };
@@ -80,7 +141,41 @@ int main(int argc, char* argv[]) {
         }
     });
 
-    // race_control.requestCircuitFlag(ur::multiplayer::idl::FlagId { 5 });
+    // --- Main Render / Input Loop ---
+
+    auto interval = std::chrono::milliseconds(16);
+    auto dt = std::chrono::duration<float>(interval).count();
+    while (window.isOpen() && !stop_token) {
+        sf::Event event;
+        while (window.pollEvent(event)) {
+            if (event.type == sf::Event::Closed) {
+                stop_token = true;
+                window.close();
+            }
+        }
+
+
+        float throttle = sf::Keyboard::isKeyPressed(sf::Keyboard::Up) - sf::Keyboard::isKeyPressed(sf::Keyboard::Down);
+        float steer = 0.3f * (sf::Keyboard::isKeyPressed(sf::Keyboard::Left) - sf::Keyboard::isKeyPressed(sf::Keyboard::Right));
+        motion_model(vs, dt, throttle, steer);
+
+        window.clear(sf::Color::Black);
+
+        // --- Render ---
+        drawVehicle(window, vs, sf::Color::White);
+
+        auto opponents = participant->opponents();
+        auto t = std::chrono::system_clock::now();
+
+        for (auto &op : opponents) {
+            auto dt = std::chrono::nanoseconds(op.vehicleState.stamp.nanoseconds) - t.time_since_epoch();
+            motion_model(op.vehicleState, std::chrono::duration<float>(dt).count(), 0.0f, 0.0f);
+        }
+
+        window.display();
+
+        std::this_thread::sleep_for(interval); // ~60 FPS
+    }
 
     // Wait until the communicator is shut down. Here, this occurs when the user presses Ctrl+C.
     communicator->waitForShutdown();
