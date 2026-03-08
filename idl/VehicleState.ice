@@ -10,7 +10,7 @@ module ur::multiplayer::idl
         Timestamp stamp;
         
         Vector2f position;
-        Vector2f velocity;
+        float vx;
         float yaw;
 
         float steering;

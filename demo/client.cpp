@@ -27,7 +27,7 @@ void drawVehicle(sf::RenderWindow &window, ur::multiplayer::idl::VehicleState st
 
 void motion_model(
     ur::multiplayer::idl::VehicleState &state,
-    float total_dt
+    std::chrono::steady_clock::time_point t
 ) {
     const float L = 40.0f;
     const float max_speed = 500.f;
@@ -37,29 +37,33 @@ void motion_model(
     const float max_accel = 1000.f;
     const float friction = 200.0f;
 
-    while (total_dt > 1e-9) {
-        float dt = std::min(0.1f, total_dt);
-        total_dt -= dt;
+    constexpr std::chrono::nanoseconds DT_MAX = std::chrono::milliseconds { 10 };
+
+    auto to_integrate = t - std::chrono::steady_clock::time_point { std::chrono::nanoseconds { state.stamp.nanoseconds } };
+
+    while (to_integrate > std::chrono::nanoseconds::zero()) {
+        std::chrono::nanoseconds delta_t = std::min(to_integrate, DT_MAX);
+        
+        to_integrate -= delta_t;
+
+        float dt = std::chrono::duration<float>{ delta_t }.count();
 
         // Update forward speed
         float acceleration = std::clamp(state.throttle * accel_gain, -max_decel, max_accel);
-        acceleration -= std::clamp(state.velocity.x / dt, -friction, friction);
+        acceleration -= std::clamp(state.vx * dt, -friction, friction);
 
-        state.velocity.x += acceleration * dt;
-        state.velocity.x = state.velocity.x;
-
-        // Lateral velocity = 0 in simple kinematic bicycle
-        state.velocity.y = 0.f;
+        state.vx += acceleration * dt;
+        state.vx = state.vx;
 
         // Update yaw
-        state.yaw += (state.velocity.x / L) * std::tan(state.steering) * dt;
+        state.yaw += (state.vx / L) * std::tan(state.steering) * dt;
         // Optional clamp for yaw [-pi, pi]
         if (state.yaw > M_PI) state.yaw -= 2.f * M_PI;
         else if (state.yaw < -M_PI) state.yaw += 2.f * M_PI;
 
         // Update position
-        state.position.x += std::cos(state.yaw) * state.velocity.x * dt;
-        state.position.y += std::sin(state.yaw) * state.velocity.x * dt;
+        state.position.x += std::cos(state.yaw) * state.vx * dt;
+        state.position.y += std::sin(state.yaw) * state.vx * dt;
     }
 }
 
@@ -110,8 +114,7 @@ int main(int argc, char* argv[]) {
     ur::multiplayer::idl::VehicleState vs;
     vs.position.x = 0.0f;
     vs.position.y = 0.0f;
-    vs.velocity.x = 0.0f;
-    vs.velocity.y = 0.0f;
+    vs.vx = 0.0f;
     vs.yaw = 0.0f;
 
     auto runner = std::thread([&]() {
@@ -146,8 +149,6 @@ int main(int argc, char* argv[]) {
 
     // --- Main Render / Input Loop ---
 
-    auto interval = std::chrono::milliseconds(16);
-    auto dt = std::chrono::duration<float>(interval).count();
     while (window.isOpen() && !stop_token) {
         sf::Event event;
         while (window.pollEvent(event)) {
@@ -157,16 +158,17 @@ int main(int argc, char* argv[]) {
             }
         }
 
+        auto t = std::chrono::steady_clock::now();
 
         float throttle = sf::Keyboard::isKeyPressed(sf::Keyboard::Up) - sf::Keyboard::isKeyPressed(sf::Keyboard::Down);
         float steer = 0.3f * (sf::Keyboard::isKeyPressed(sf::Keyboard::Left) - sf::Keyboard::isKeyPressed(sf::Keyboard::Right));
 
         {
             std::scoped_lock lock(vs_mtx);
-            vs.stamp.nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+            vs.stamp.nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(t.time_since_epoch()).count();
             vs.throttle = throttle;
             vs.steering = steer;
-            motion_model(vs, dt);
+            motion_model(vs, t);
         }
 
         window.clear(sf::Color::Black);
@@ -175,25 +177,13 @@ int main(int argc, char* argv[]) {
         drawVehicle(window, vs, sf::Color::White);
 
         auto opponents = participant->opponents();
-        auto t = std::chrono::steady_clock::now();
 
         for (auto &op : opponents) {
-            auto other_t = std::chrono::steady_clock::time_point{ std::chrono::nanoseconds { op.vehicleState.stamp.nanoseconds } };
-
-            auto dt = std::chrono::duration<float>(
-                t - other_t
-            ).count();
-
-            std::cout << "\n" << t.time_since_epoch().count() << std::endl;
-            std::cout << other_t.time_since_epoch().count() << std::endl;
-
-            motion_model(op.vehicleState, dt);
+            motion_model(op.vehicleState, t);
             drawVehicle(window, op.vehicleState, sf::Color::Red);
         }
 
         window.display();
-
-        std::this_thread::sleep_for(interval); // ~60 FPS
     }
 
     // Wait until the communicator is shut down. Here, this occurs when the user presses Ctrl+C.
