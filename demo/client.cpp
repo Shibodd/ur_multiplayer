@@ -154,6 +154,7 @@ int main(int argc, char* argv[]) {
 
         {
             std::scoped_lock lock(vs_mtx);
+            vs.stamp.nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
             vs.throttle = throttle;
             vs.steering = steer;
             motion_model(vs, dt);
