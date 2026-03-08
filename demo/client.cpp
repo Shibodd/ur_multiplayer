@@ -29,13 +29,12 @@ void motion_model(
     ur::multiplayer::idl::VehicleState &state,
     std::chrono::steady_clock::time_point t
 ) {
-    const float L = 40.0f;
-    const float max_speed = 500.f;
+    constexpr float L = 40.0f;
 
-    const float accel_gain = 2000.0f;
-    const float max_decel = 1000.f;
-    const float max_accel = 1000.f;
-    const float friction = 200.0f;
+    constexpr float ACCEL_GAIN = 2000.0f;
+    constexpr float MAX_DECEL = 1000.f;
+    constexpr float MAX_ACCEL = 1000.f;
+    constexpr float FRICTION = 300.f;
 
     constexpr std::chrono::nanoseconds DT_MAX = std::chrono::milliseconds { 10 };
 
@@ -48,11 +47,17 @@ void motion_model(
 
         float dt = std::chrono::duration<float>{ delta_t }.count();
 
-        // Update forward speed
-        float acceleration = std::clamp(state.throttle * accel_gain, -max_decel, max_accel);
-        acceleration -= std::clamp(state.vx * dt, -friction, friction);
-
+        float acceleration = std::clamp(state.throttle * ACCEL_GAIN, -MAX_DECEL, MAX_ACCEL);
         state.vx += acceleration * dt;
+
+        float friction = std::copysign(FRICTION, state.vx);
+        if ((std::abs(friction) * dt) > std::abs(state.vx)) {
+            state.vx = 0.0;
+        } else {
+            state.vx -= friction * dt;
+        }
+
+        // Update forward speed
         state.vx = state.vx;
 
         // Update yaw
@@ -65,6 +70,10 @@ void motion_model(
         state.position.x += std::cos(state.yaw) * state.vx * dt;
         state.position.y += std::sin(state.yaw) * state.vx * dt;
     }
+
+    state.stamp.nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(
+        t.time_since_epoch()
+    ).count();
 }
 
 int main(int argc, char* argv[]) {
@@ -161,11 +170,10 @@ int main(int argc, char* argv[]) {
         auto t = std::chrono::steady_clock::now();
 
         float throttle = sf::Keyboard::isKeyPressed(sf::Keyboard::Up) - sf::Keyboard::isKeyPressed(sf::Keyboard::Down);
-        float steer = 0.3f * (sf::Keyboard::isKeyPressed(sf::Keyboard::Left) - sf::Keyboard::isKeyPressed(sf::Keyboard::Right));
+        float steer = 0.3f * (sf::Keyboard::isKeyPressed(sf::Keyboard::Right) - sf::Keyboard::isKeyPressed(sf::Keyboard::Left));
 
         {
             std::scoped_lock lock(vs_mtx);
-            vs.stamp.nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(t.time_since_epoch()).count();
             vs.throttle = throttle;
             vs.steering = steer;
             motion_model(vs, t);
