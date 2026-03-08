@@ -127,6 +127,10 @@ int main(int argc, char* argv[]) {
                 vehicle_state = vs;
             }
 
+            if (offset) {
+                vehicle_state.stamp.nanoseconds += std::chrono::duration_cast<std::chrono::nanoseconds>(*offset).count();
+            }
+
             auto proxy = participant->server_proxy();
             auto tx_stamp = std::chrono::duration_cast<std::chrono::nanoseconds>(
                 clock_sync::ClockOffsetCalculator::Clock::now().time_since_epoch()
@@ -174,6 +178,9 @@ int main(int argc, char* argv[]) {
             auto dt = std::chrono::duration<float>(
                 t - other_t
             ).count();
+
+            std::cout << "\n" << t.time_since_epoch().count() << std::endl;
+            std::cout << other_t.time_since_epoch().count() << std::endl;
 
             motion_model(op.vehicleState, dt);
             drawVehicle(window, op.vehicleState, sf::Color::Red);
