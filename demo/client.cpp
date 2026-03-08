@@ -27,7 +27,7 @@ void drawVehicle(sf::RenderWindow &window, ur::multiplayer::idl::VehicleState st
 
 void motion_model(
     ur::multiplayer::idl::VehicleState &state,
-    float dt
+    float total_dt
 ) {
     const float L = 40.0f;
     const float max_speed = 500.f;
@@ -37,25 +37,30 @@ void motion_model(
     const float max_accel = 1000.f;
     const float friction = 200.0f;
 
-    // Update forward speed
-    float acceleration = std::clamp(state.throttle * accel_gain, -max_decel, max_accel);
-    acceleration -= std::clamp(state.velocity.x / dt, -friction, friction);
+    while (total_dt > 1e-9) {
+        float dt = std::min(0.1f, total_dt);
+        total_dt -= dt;
 
-    state.velocity.x += acceleration * dt;
-    state.velocity.x = state.velocity.x;
+        // Update forward speed
+        float acceleration = std::clamp(state.throttle * accel_gain, -max_decel, max_accel);
+        acceleration -= std::clamp(state.velocity.x / dt, -friction, friction);
 
-    // Lateral velocity = 0 in simple kinematic bicycle
-    state.velocity.y = 0.f;
+        state.velocity.x += acceleration * dt;
+        state.velocity.x = state.velocity.x;
 
-    // Update yaw
-    state.yaw += (state.velocity.x / L) * std::tan(state.steering) * dt;
-    // Optional clamp for yaw [-pi, pi]
-    if (state.yaw > M_PI) state.yaw -= 2.f * M_PI;
-    else if (state.yaw < -M_PI) state.yaw += 2.f * M_PI;
+        // Lateral velocity = 0 in simple kinematic bicycle
+        state.velocity.y = 0.f;
 
-    // Update position
-    state.position.x += std::cos(state.yaw) * state.velocity.x * dt;
-    state.position.y += std::sin(state.yaw) * state.velocity.x * dt;
+        // Update yaw
+        state.yaw += (state.velocity.x / L) * std::tan(state.steering) * dt;
+        // Optional clamp for yaw [-pi, pi]
+        if (state.yaw > M_PI) state.yaw -= 2.f * M_PI;
+        else if (state.yaw < -M_PI) state.yaw += 2.f * M_PI;
+
+        // Update position
+        state.position.x += std::cos(state.yaw) * state.velocity.x * dt;
+        state.position.y += std::sin(state.yaw) * state.velocity.x * dt;
+    }
 }
 
 int main(int argc, char* argv[]) {
