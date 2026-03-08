@@ -1,3 +1,4 @@
+#include "VehicleState.h"
 #include <iostream>
 #include <thread>
 
@@ -46,7 +47,10 @@ int main(int argc, char* argv[]) {
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
     } while (not participant->has_joined());
 
-    auto runner = std::thread([&stop_token, &participant]() {
+    std::mutex vs_mtx;
+    ur::multiplayer::idl::VehicleState vs;
+
+    auto runner = std::thread([&]() {
         std::chrono::milliseconds interval { 50 };
 
         auto next = std::chrono::steady_clock::now();
@@ -56,19 +60,23 @@ int main(int argc, char* argv[]) {
             auto t = std::chrono::steady_clock::now();
             next = t + interval;
 
-            ur::multiplayer::idl::VehicleState vs;
-
             auto offset = participant->clock_offset();
 
             if (offset) {
                 std::cout << offset->count() << std::endl;
             }
-            
+
+            ur::multiplayer::idl::VehicleState vehicle_state;
+            {
+                std::scoped_lock lock(vs_mtx);
+                vehicle_state = vs;
+            }
+
             auto proxy = participant->server_proxy();
             auto tx_stamp = std::chrono::duration_cast<std::chrono::nanoseconds>(
                 clock_sync::ClockOffsetCalculator::Clock::now().time_since_epoch()
             );
-            proxy->hrUpdate({ tx_stamp.count() }, vs);
+            proxy->hrUpdate({ tx_stamp.count() }, vehicle_state);
         }
     });
 

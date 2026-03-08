@@ -29,9 +29,17 @@ struct Participant : public idl::Participant {
         return m_offset_calculator.get_tx_delay(clock_sync::ClockOffsetCalculator::Clock::now());
     }
 
+    idl::Opponents opponents() {
+        std::scoped_lock lock(m_opponents_mtx);
+        return m_opponents;
+    }
+
 private:
     std::mutex m_offset_calc_mtx;
     clock_sync::ClockOffsetCalculator m_offset_calculator;
+
+    std::mutex m_opponents_mtx;
+    idl::Opponents m_opponents;
 
     struct Data {
         idl::ServerPrx proxy;
