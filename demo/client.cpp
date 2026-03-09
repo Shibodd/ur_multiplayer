@@ -1,4 +1,3 @@
-#include "VehicleState.h"
 #include <chrono>
 #include <iostream>
 #include <thread>
@@ -158,6 +157,17 @@ int main(int argc, char* argv[]) {
 
     // --- Main Render / Input Loop ---
 
+    std::array cflag_color_map = {
+        sf::Color::Green,
+        sf::Color::Yellow,
+        sf::Color::Red,
+    };
+
+    std::array vflag_color_map = {
+        sf::Color::Green,
+        sf::Color::Blue
+    };
+
     while (window.isOpen() && !stop_token) {
         sf::Event event;
         while (window.pollEvent(event)) {
@@ -189,6 +199,38 @@ int main(int argc, char* argv[]) {
         for (auto &op : opponents) {
             motion_model(op.vehicleState, t);
             drawVehicle(window, op.vehicleState, sf::Color::Red);
+        }
+
+        auto flags = participant->flags(t);
+
+        const sf::Vector2f FLAG_MARGIN = sf::Vector2f(15, 15);
+        const sf::Vector2f FLAG_SIZE = sf::Vector2f(40, 20);
+        const sf::Vector2f FLAG_ORIGIN = sf::Vector2f { 800 - FLAG_MARGIN.x - FLAG_SIZE.x, FLAG_MARGIN.y };
+
+        {
+            sf::RectangleShape cflag(FLAG_SIZE);
+            cflag.setPosition(FLAG_ORIGIN);
+
+            if (flags.circuit >= 0 && flags.circuit < cflag_color_map.size()) {
+                cflag.setFillColor(cflag_color_map[flags.circuit]);
+            } else {
+                cflag.setFillColor(sf::Color::Magenta);
+            }
+            
+            window.draw(cflag);
+        }
+
+        {
+            sf::RectangleShape vflag(FLAG_SIZE);
+            vflag.setPosition(FLAG_ORIGIN + sf::Vector2f(0, FLAG_MARGIN.y + FLAG_SIZE.y));
+
+            if (flags.vehicle >= 0 && flags.vehicle < vflag_color_map.size()) {
+                vflag.setFillColor(vflag_color_map[flags.vehicle]);
+            } else {
+                vflag.setFillColor(sf::Color::Magenta);
+            }
+
+            window.draw(vflag);
         }
 
         window.display();

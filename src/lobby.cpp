@@ -1,3 +1,4 @@
+#include "multiplayer/server.hpp"
 #include <climits>
 #include <iostream>
 #include <algorithm>
@@ -12,6 +13,7 @@ namespace multiplayer {
 Participants::Participants(LobbyServant& lobby) 
     : m_servants(lobby.m_active_servants), m_lock(lobby.m_active_servants_mtx) {}
 
+ActiveServants::iterator Participants::find(participant_id_t id) const { return m_servants.find(id); }
 ActiveServants::iterator Participants::begin() const { return m_servants.begin(); };
 ActiveServants::iterator Participants::end() const { return m_servants.end(); }
 ActiveServants::iterator Participants::erase(ActiveServants::iterator it) {

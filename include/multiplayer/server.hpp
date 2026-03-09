@@ -1,5 +1,6 @@
 #pragma once
 
+#include "FlagId.h"
 #include "Participant.h"
 #include <atomic>
 #include <chrono>
@@ -39,7 +40,13 @@ public:
     }
 
     participant_id_t participant_id() const { return m_id; }
+
+    void set_vehicle_flag(decltype(idl::FlagId::value) flag) { m_flag = flag; }
+    auto vehicle_flag() const { return m_flag.load(); }
+
 private:
+    std::atomic<decltype(idl::FlagId::value)> m_flag;
+
     std::mutex m_state_mtx;
     idl::VehicleState m_state;
 

@@ -25,7 +25,7 @@ int main(int argc, char* argv[])
 
     // Register the servants with the adapter.
     auto lobby = std::make_shared<LobbyServant>();
-    auto racecontrol = std::make_shared<RaceControlServant>();
+    auto racecontrol = std::make_shared<RaceControlServant>(lobby, std::chrono::milliseconds(1000), std::chrono::milliseconds(2000));
 
     adapter->add(lobby, Ice::Identity{"lobby"});
     adapter->add(racecontrol, Ice::Identity{"racecontrol"});
@@ -36,7 +36,7 @@ int main(int argc, char* argv[])
 
     std::atomic_bool stop_token = false;
 
-    auto thread = std::thread([&]() {
+    auto srv_thread = std::thread([&]() {
         auto interval = std::chrono::milliseconds { 50 };
         auto timeout = std::chrono::milliseconds { 2500 };
         auto next = std::chrono::steady_clock::now();
@@ -45,6 +45,8 @@ int main(int argc, char* argv[])
             std::this_thread::sleep_until(next);
             auto t = std::chrono::steady_clock::now();
             next = t + interval;
+
+            auto cflag = racecontrol->circuit_flag(t);
 
             Participants participants(*lobby);
 
@@ -109,9 +111,12 @@ int main(int argc, char* argv[])
                         ).count() },
                         rx_delay,
                         world_state,
-                        idl::FlagId { 0 },
-                        idl::FlagId { 0 },
-                        idl::ScheduledFlag { idl::FlagId { 0 }, idl::Timestamp { 0 }}
+                        idl::FlagId { ptr->vehicle_flag() },
+                        idl::FlagId { cflag.first },
+                        idl::ScheduledFlag {
+                            idl::FlagId { cflag.second.has_value()? cflag.second->id : flag_id_t { 0 } },
+                            idl::Timestamp { cflag.second.has_value()? cflag.second->activation_stamp.time_since_epoch().count() : 0 }
+                        }
                     );
 
                     // Restore the current player state so that the others receive it
@@ -121,6 +126,10 @@ int main(int argc, char* argv[])
                 }
             }
         }
+    });
+
+    auto rc_thread = std::thread([&]() {
+        race_control_run(racecontrol, lobby, std::chrono::milliseconds(100), stop_token);
     });
 
 
@@ -136,7 +145,8 @@ int main(int argc, char* argv[])
     // Wait until the communicator is shut down. Here, this occurs when the user presses Ctrl+C.
     communicator->waitForShutdown();
 
-    thread.join();
+    srv_thread.join();
+    rc_thread.join();
 
     return 0;
 }

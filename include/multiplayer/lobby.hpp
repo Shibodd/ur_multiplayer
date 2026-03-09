@@ -25,6 +25,7 @@ struct Participants {
     ActiveServants::iterator begin() const;
     ActiveServants::iterator end() const;
     ActiveServants::iterator erase(ActiveServants::iterator it);
+    ActiveServants::iterator find(participant_id_t id) const;
 
     std::size_t size() const;
 private:
