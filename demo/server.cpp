@@ -15,13 +15,17 @@ int main(int argc, char* argv[])
     Ice::CtrlCHandler ctrlCHandler;
 
     // Create an Ice communicator. We'll use this communicator to create an object adapter.
-    Ice::CommunicatorPtr communicator = Ice::initialize(argc, argv);
+    Ice::InitializationData initData;
+    initData.properties = Ice::createProperties(argc, argv);
+    initData.properties->setProperty("ServerAdapter.PublishedEndpoints", initData.properties->getProperty("Demo.Remote"));
+
+    Ice::CommunicatorPtr communicator = Ice::initialize(initData);
 
     // Make sure the communicator is destroyed at the end of this scope.
     Ice::CommunicatorHolder communicatorHolder{communicator};
 
     // Create an object adapter that listens for incoming requests and dispatches them to servants.
-    auto adapter = communicator->createObjectAdapterWithEndpoints("ServerAdapter", "udp -h localhost -p 3478");
+    auto adapter = communicator->createObjectAdapterWithEndpoints("ServerAdapter", initData.properties->getProperty("Demo.Remote"));
 
     // Register the servants with the adapter.
     auto lobby = std::make_shared<LobbyServant>();
@@ -32,7 +36,7 @@ int main(int argc, char* argv[])
 
     // Start dispatching requests.
     adapter->activate();
-    std::cout << "Listening on port 3478..." << std::endl;
+    std::cout << "Listening..." << std::endl;
 
     std::atomic_bool stop_token = false;
 

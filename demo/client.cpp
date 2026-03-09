@@ -78,12 +78,13 @@ void motion_model(
 int main(int argc, char* argv[]) {
     Ice::InitializationData initData;
     initData.properties = Ice::createProperties(argc, argv);
-    initData.properties->setProperty("ClientAdapter.PublishedEndpoints", "udp -h 192.168.1.65 -p 3477");
+    initData.properties->setProperty("ClientAdapter.PublishedEndpoints", initData.properties->getProperty("Demo.Local"));
+    
 
     Ice::CommunicatorPtr communicator = Ice::initialize(initData);
     Ice::CommunicatorHolder communicatorHolder{ communicator };
 
-    Ice::ObjectAdapterPtr adapter = communicator->createObjectAdapterWithEndpoints("ClientAdapter", "udp -h 192.168.1.65 -p 3477");
+    Ice::ObjectAdapterPtr adapter = communicator->createObjectAdapterWithEndpoints("ClientAdapter", initData.properties->getProperty("Demo.Local"));
 
     auto participant = std::make_shared<ur::multiplayer::Participant>();
     auto participant_proxy = Ice::uncheckedCast<ur::multiplayer::idl::ParticipantPrx>(adapter->addWithUUID(participant)).ice_datagram();
@@ -91,11 +92,11 @@ int main(int argc, char* argv[]) {
     adapter->activate();
     
     auto lobby = Ice::uncheckedCast<ur::multiplayer::idl::LobbyPrx>(
-        communicator->stringToProxy("lobby:udp -h 192.168.1.71 -p 3478")->ice_datagram()
+        communicator->stringToProxy("lobby:" + initData.properties->getProperty("Demo.Remote"))->ice_datagram()
     );
 
     auto race_control = Ice::uncheckedCast<ur::multiplayer::idl::RaceControlPrx>(
-        communicator->stringToProxy("racecontrol:udp -h 192.168.1.71 -p 3478")->ice_datagram()
+        communicator->stringToProxy("racecontrol:" + initData.properties->getProperty("Demo.Remote"))->ice_datagram()
     );
 
     Ice::CtrlCHandler ctrlCHandler;
@@ -116,7 +117,7 @@ int main(int argc, char* argv[]) {
     } while (not participant->has_joined());
 
     sf::RenderWindow window(sf::VideoMode(800, 600), "Mini Racing Demo");
-    window.setFramerateLimit(60);
+    window.setFramerateLimit(100);
 
     std::mutex vs_mtx;
     ur::multiplayer::idl::VehicleState vs;

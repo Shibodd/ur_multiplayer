@@ -1,0 +1,6 @@
+Demo.Remote=udp -h localhost -p 3478
+Demo.Local=udp -h localhost -p 3477
+
+RcClient.FlagType=circuit
+RcClient.VehicleId=0
+RcClient.FlagId=1
