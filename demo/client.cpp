@@ -95,10 +95,6 @@ int main(int argc, char* argv[]) {
         communicator->stringToProxy("lobby:" + initData.properties->getProperty("Demo.Remote"))->ice_datagram()
     );
 
-    auto race_control = Ice::uncheckedCast<ur::multiplayer::idl::RaceControlPrx>(
-        communicator->stringToProxy("racecontrol:" + initData.properties->getProperty("Demo.Remote"))->ice_datagram()
-    );
-
     Ice::CtrlCHandler ctrlCHandler;
     std::atomic_bool stop_token = false;
 
